@@ -1,0 +1,38 @@
+main() <$(MODEL)_Main.c>
+    initialize() 
+        preinitialize()
+            model_New() <_$(MODEL)/$(MODEL).c>
+                // Step 1 :: New
+                CompositeActor_New() <commons/_CompositeActor.c>
+                    分配CompisiteActor
+                    CompositeActor_Init()
+                        Actor_Init() <commons/_Actor.c>
+                SDFDirector_New() <commons/_SDFDirector.c>
+                    分配SDFDirector
+                    SDFDirector_Init()
+                        Director_Init() <commons/_Director.c>
+                // 以AddSubstract为例说明如何建立IOPorts
+                $(MODEL)_Display_New()
+                $(MODEL)_Ramp_New()
+                $(MODEL)_Const_New()
+                $(MODEL)_AddSubstract_New()
+                    AtomicActor_New()
+                        PblList *_inputPorts, *_outputPorts;
+                        TypedIOPort *plus;
+                        pblListAdd(_inputPorts, plus);
+                        PblList *plus_0;
+                        SDFReceiver *plus_0_0 = SDFReceiver_New();
+                        SDFReceiver_New() <commons/_SDFReceiver.c>
+                            SDFReceiver_Init()
+                                Receiver_Init() <commons/_Receiver.c>
+                        pblListAdd(plus_0, plus_0_0);
+                        pblListAdd(_localReceiver, plus_0);
+                        
+                        TypedIOPort *minus;类似
+                        
+                        TypedIOPort *output;也类似，区别在：
+                        没有SDFReceiver
+                        pblListAdd(_farReceivers, output__0);
+                建立IOPorts之间连接关系（硬编码）
+            // Step 2 :: Preinitialize
+            // Step 3 :: Initialize
