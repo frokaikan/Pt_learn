@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
 MODEL = model2
-FLAGS = -w -O3 -ggdb -fPIC -I_$(MODEL) -Icommons
+FLAGS = -w -O3 -ggdb -fPIC -I_$(MODEL) -Icommons -D_debugging
 ALL_C_FILES = $(wildcard _$(MODEL)/*.c) $(wildcard commons/*.c)
 ALL_O_FILES = $(ALL_C_FILES:.c=.o)
 DEL = del /Q

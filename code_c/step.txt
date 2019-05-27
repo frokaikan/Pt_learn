@@ -1,8 +1,17 @@
+根据PtBook，每个Model都分为五步：
+Preinitialize :: 静态分析，创建内部角色。只执行一次，包括New
+Initialize :: 参数初始化，重置本地状态。可能执行多次
+---iterate---
+Prefile :: 检测先决条件
+Fire :: 读入数据，计算，产生输出
+Postfire :: 更新角色状态
+---iterate end---
+
 main() <$(MODEL)_Main.c>
     initialize() 
         preinitialize()
+            // Step 1 :: New
             model_New() <_$(MODEL)/$(MODEL).c>
-                // Step 1 :: New
                 CompositeActor_New() <commons/_CompositeActor.c>
                     分配CompisiteActor
                     CompositeActor_Init()
@@ -17,22 +26,90 @@ main() <$(MODEL)_Main.c>
                 $(MODEL)_Const_New()
                 $(MODEL)_AddSubstract_New()
                     AtomicActor_New()
+                        // 定义IO端口列表
                         PblList *_inputPorts, *_outputPorts;
                         TypedIOPort *plus;
+                        // 将IO端口分别加入端口列表中
                         pblListAdd(_inputPorts, plus);
                         PblList *plus_0;
+                        // 对于Input端口，定义Receiver
                         SDFReceiver *plus_0_0 = SDFReceiver_New();
                         SDFReceiver_New() <commons/_SDFReceiver.c>
                             SDFReceiver_Init()
                                 Receiver_Init() <commons/_Receiver.c>
                         pblListAdd(plus_0, plus_0_0);
                         pblListAdd(_localReceiver, plus_0);
-                        
                         TypedIOPort *minus;类似
-                        
                         TypedIOPort *output;也类似，区别在：
-                        没有SDFReceiver
-                        pblListAdd(_farReceivers, output__0);
+                        ①没有SDFReceiver
+                        ②pblListAdd(_farReceivers, output__0);
+                        ③Output端口没有Sender
                 建立IOPorts之间连接关系（硬编码）
+                /* 
+                pblListAdd(pblListGet(model2_Ramp_output->_farReceivers, 0), pblListGet(pblListGet(model2_AddSubtract_plus->_localReceivers, 0), 0));
+                将output的_farReceiver和input的_localReceivers关联
+                */
             // Step 2 :: Preinitialize
+            $(MODEL)->preinitialize
+            >> CompositeActor_Preinitialize() <commons/CompositeActor.c>
+                director->preinitialize
+                >> Director_Preinitialize() <commons/_Director.c>
+                    localClock->initialize
+                    >> LocalClock_Initialize() <commons/_LocalClock.c>
+                for all actors as %actor do %actor->preinitialize(director, %actor)
+                /*
+                将Ramp的step置为10，然而并没有什么卵用（Initialize做了同样的工作）
+                其他的Actor全是空的，不知道有什么卵用
+                */
             // Step 3 :: Initialize
+            $(MODEL)->Initialize
+            >> CompositeActor_Initialize()
+                director->initialize
+                >> Director_Initialize()
+                    localClock->resetLocalTime
+                    >> LocalClock_ResetLocalTime() <commons/_LocalClock.c>
+                    localClock->start
+                    >> LocalClock_Start() <commons/_LocalClock.c>
+                for all actors as %actor do %actor->initialize(director, actor)
+                /*
+                设定Ramp的state和step
+                其他的Actor是空的
+                */
+    // Step 4-6 :: loop - Iterate (Prefile<bool> Fire Postfire<bool>)
+    /*
+    loop iterate() ::
+        switch prefire()
+        case true : // prefire
+            fire()
+            switch postfile()
+            case true : // postfire
+                next loop;
+            case false : // postfire
+                break loop;
+        case false : // prefire
+            next loop;
+    */
+    iterate()
+        // Step 4 :: Prefile
+        $(MODEL)->prefire
+        >> CompositeActor_Prefire() <commons/_CompositeActor.c>
+            return director->prefire
+            >> Director_Prefire()
+                localClock->getLocalTimeForCurrentEnvironmentTime
+                >> LocalClock_GetLocalTimeForCurrentEnvironmentTime() <commons/_LocalClock.c>
+                localClock->setLocalTime
+                >> LocalClock_SetLocalTime() <commons/_LocalClock.c>
+                return true
+        // Step 5 :: Fire (Main Evaluate)
+        >> CompositeActor_Fire <commons/CompositeActor.c>
+            actor->_transferPortParameterInputs
+            >> CompositeActor__TransferPortParameterInputs
+                // 空...?没写完?
+            for all inputPorts as %IP do Director_TransferInputs(director, %IP) <commons/_Director.c>
+            director->fire
+            >> Director_Fire() <commons/_Director.c>
+            for all actors as %actor do %actor->iterate()
+            /*
+            除了AddSubstract外的三个actor都简单进行输入/输出工作
+            
+    
