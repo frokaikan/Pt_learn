@@ -18,7 +18,7 @@ commons/%.o : commons/%.c
 model.dll : $(ALL_O_FILES)
 	$(CC) $(FLAGS) -shared -o $@ $^
 	
-$(MODEL)_Main.exe : $(MODEL)_Main.c $(MODEL)_Main.h model.dll
+$(MODEL)_Main.exe : $(MODEL)_Main.c model.dll
 	$(CC) $(FLAGS) -o $@ $< -L. -lmodel
 	
 .PHONY : run

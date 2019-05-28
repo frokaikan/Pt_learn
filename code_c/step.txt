@@ -6,6 +6,11 @@ Prefile :: 检测先决条件
 Fire :: 读入数据，计算，产生输出
 Postfire :: 更新角色状态
 ---iterate end---
+/* 伪继承 ::
+若A伪继承B，则A具有和B完全相同的代码，并且在最后有自己独有的代码
+通过(struct B*)(ptA)来获取B部分的成员。
+本例中SDFDirector伪继承自Director
+*/
 
 main() <$(MODEL)_Main.c>
     initialize() 
@@ -51,9 +56,9 @@ main() <$(MODEL)_Main.c>
                 */
             // Step 2 :: Preinitialize
             $(MODEL)->preinitialize
-            >> CompositeActor_Preinitialize() <commons/CompositeActor.c>
+            >> CompositeActor_Preinitialize() <commons/_CompositeActor.c>
                 director->preinitialize
-                >> Director_Preinitialize() <commons/_Director.c>
+                >> Director_Preinitialize() <commons/_Director.c> , SDFDirector无修改
                     localClock->initialize
                     >> LocalClock_Initialize() <commons/_LocalClock.c>
                 for all actors as %actor do %actor->preinitialize(director, %actor)
@@ -61,11 +66,12 @@ main() <$(MODEL)_Main.c>
                 将Ramp的step置为10，然而并没有什么卵用（Initialize做了同样的工作）
                 其他的Actor全是空的，不知道有什么卵用
                 */
+                // 伪继承结束
             // Step 3 :: Initialize
             $(MODEL)->Initialize
-            >> CompositeActor_Initialize()
+            >> CompositeActor_Initialize() <commons/_CompositeActor.c>
                 director->initialize
-                >> Director_Initialize()
+                >> Director_Initialize() <commons/_Director.c> , SDFDirector有修改
                     localClock->resetLocalTime
                     >> LocalClock_ResetLocalTime() <commons/_LocalClock.c>
                     localClock->start
@@ -75,6 +81,8 @@ main() <$(MODEL)_Main.c>
                 设定Ramp的state和step
                 其他的Actor是空的
                 */
+                // 伪继承结束
+                /* 然后不知道在干啥 */
     // Step 4-6 :: loop - Iterate (Prefile<bool> Fire Postfire<bool>)
     /*
     loop iterate() ::
@@ -90,26 +98,57 @@ main() <$(MODEL)_Main.c>
             next loop;
     */
     iterate()
-        // Step 4 :: Prefile
+        // Step 4 :: Prefire
         $(MODEL)->prefire
         >> CompositeActor_Prefire() <commons/_CompositeActor.c>
             return director->prefire
-            >> Director_Prefire()
+            >> Director_Prefire() <commons/_Director.c> , SDFDirector有修改
                 localClock->getLocalTimeForCurrentEnvironmentTime
                 >> LocalClock_GetLocalTimeForCurrentEnvironmentTime() <commons/_LocalClock.c>
                 localClock->setLocalTime
                 >> LocalClock_SetLocalTime() <commons/_LocalClock.c>
                 return true
+            // 伪继承结束
+            /* 接下来还是不知道在干啥 */
         // Step 5 :: Fire (Main Evaluate)
+        $(MODEL)->fire
         >> CompositeActor_Fire <commons/CompositeActor.c>
             actor->_transferPortParameterInputs
             >> CompositeActor__TransferPortParameterInputs
                 // 空...?没写完?
+            /* for _Director.c , not _SDFDirector.c
             for all inputPorts as %IP do Director_TransferInputs(director, %IP) <commons/_Director.c>
-            director->fire
-            >> Director_Fire() <commons/_Director.c>
-            for all actors as %actor do %actor->iterate()
-            /*
-            除了AddSubstract外的三个actor都简单进行输入/输出工作
-            
-    
+            */
+            director->fire // 逻辑完全变样
+            >> model2_Schedule_iterate() <_$(MODEL)/$(MODEL)_SDFSchedule.c>
+                for all actors as %actor do %actor->iterate()
+                >> AtomicActor_Iterate() <commons/_AtomicActor.c>
+                /*
+                按照Schedule中的顺序依次Fire
+                四个actor的prefire和postfire都啥都不干
+                除了AddSubstract外的三个actor都简单进行输入/输出工作
+                AddSubstract读取输入并给出输出
+                */
+            /* for _Director.c , not _SDFDirector.c
+            director->transferOutputs
+            >> Director_TransferOutputs() <commons/_Director.c>
+                for all outputports as %OP do Director_TransferOutputs1(director, %OP)
+            */
+        // Step 6 :: Postfire
+        $(MODEL)->postfire
+        >> CompositeActor_Postfire() <commons/_CompositeActor.c>
+            director->postfire
+            >> SDFDirector_Postfire() <commons/_SDFDirector.c> , SDFDirector有修改
+                bool result; // 检测是否到达了迭代上限
+                return result && director->postfire
+                >> Director_Postfire() <commons/_Director.c>
+                    return true;
+                    /* 啥都没干... */
+    // Step 7 :: wrapup
+    $(MODEL)->wrapup
+    >> CompositeActor_Wrapup() <commons/_CompositeActor.c>
+        director->wrapup
+        >> Director_Wrapup() <commons/_Director.c> , SDFDirector无修改
+            for all actors as %actor do %actor->wrapup
+            /* 四个actor都啥都没干 */
+                

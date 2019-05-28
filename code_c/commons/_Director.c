@@ -79,6 +79,9 @@ void Director_New_Free(struct Director* director) {
 }
 
 void Director_Fire(struct Director* director) {
+#ifdef _debugging
+    fprintf(stderr, "%s, line : %d, Director_Fire START\n", __FILE__, __LINE__);
+#endif
     PblList* actorsList = director->container->_containedEntities;
     PblIterator* actors = pblIteratorNew(actorsList);
 
